@@ -25,7 +25,7 @@ gray.save("gray_image.jpg")
 ```
 Saved file: `gray_image.jpg`
 
-![Gray Image](gray_image.jpg)
+![Gray Image](../gray_image.jpg)
 
 ## 3. Resize to 300×300 and rotate 45°
 ```python
@@ -36,9 +36,9 @@ rotated.save("rotated_45.png")
 ```
 Saved files: `resized_300x300.png`, `rotated_45.png`
 
-![Resized 300x300](resized_300x300.png)
+![Resized 300x300](../resized_300x300.png)
 
-![Rotated 45°](rotated_45.png)
+![Rotated 45°](../rotated_45.png)
 
 ## 4. Apply BLUR and SHARPEN filters
 ```python
@@ -49,9 +49,9 @@ sharpened.save("pil_sharpen.png")
 ```
 Saved files: `pil_blur.png`, `pil_sharpen.png`
 
-![PIL Blur](pil_blur.png)
+![PIL Blur](../pil_blur.png)
 
-![PIL Sharpen](pil_sharpen.png)
+![PIL Sharpen](../pil_sharpen.png)
 
 ## 5. OpenCV image info
 ```python
@@ -73,7 +73,7 @@ cv2.imwrite("output_gray.jpg", gray)
 ```
 Saved file: `output_gray.jpg`
 
-![OpenCV Gray](output_gray.jpg)
+![OpenCV Gray](../output_gray.jpg)
 
 ## 7. Display original and grayscale side by side
 ```python
@@ -95,9 +95,9 @@ cv2.imwrite("opencv_center_crop_100x100.jpg", crop)
 ```
 Saved files: `opencv_half.jpg`, `opencv_center_crop_100x100.jpg`
 
-![OpenCV Half](opencv_half.jpg)
+![OpenCV Half](../opencv_half.jpg)
 
-![OpenCV Center Crop 100x100](opencv_center_crop_100x100.jpg)
+![OpenCV Center Crop 100x100](../opencv_center_crop_100x100.jpg)
 
 ## 9. Gaussian blur and Canny edge detection
 ```python

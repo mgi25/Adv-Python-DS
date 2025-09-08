@@ -11,7 +11,7 @@ cv2.imwrite(f"{outdir}/rotated_45.jpg", rotated)
 ```
 Saved file: `q5/outputs/rotated_45.jpg`
 
-![Rotated 45°](q5/outputs/rotated_45.jpg)
+![Rotated 45°](../q5/outputs/rotated_45.jpg)
 
 ## 2. Convert color image to black & white (binary)
 ```python
@@ -21,7 +21,7 @@ cv2.imwrite(f"{outdir}/binary.jpg", binary)
 ```
 Saved file: `q5/outputs/binary.jpg`
 
-![Binary Image](q5/outputs/binary.jpg)
+![Binary Image](../q5/outputs/binary.jpg)
 
 ## 3. Flip image horizontally and vertically
 ```python
@@ -32,9 +32,9 @@ cv2.imwrite(f"{outdir}/flip_vertical.jpg", flip_v)
 ```
 Saved files: `q5/outputs/flip_horizontal.jpg`, `q5/outputs/flip_vertical.jpg`
 
-![Flipped Horizontal](q5/outputs/flip_horizontal.jpg)
+![Flipped Horizontal](../q5/outputs/flip_horizontal.jpg)
 
-![Flipped Vertical](q5/outputs/flip_vertical.jpg)
+![Flipped Vertical](../q5/outputs/flip_vertical.jpg)
 
 ## 4. Crop the center portion of the image
 ```python
@@ -45,7 +45,7 @@ cv2.imwrite(f"{outdir}/center_crop.jpg", crop)
 ```
 Saved file: `q5/outputs/center_crop.jpg`
 
-![Center Crop](q5/outputs/center_crop.jpg)
+![Center Crop](../q5/outputs/center_crop.jpg)
 
 ## 5. Draw rectangle, circle, and line
 ```python
@@ -57,7 +57,7 @@ cv2.imwrite(f"{outdir}/shapes.jpg", draw)
 ```
 Saved file: `q5/outputs/shapes.jpg`
 
-![Shapes](q5/outputs/shapes.jpg)
+![Shapes](../q5/outputs/shapes.jpg)
 
 ## 6. Convert image to HSV color space
 ```python
@@ -66,7 +66,7 @@ cv2.imwrite(f"{outdir}/hsv.jpg", hsv)
 ```
 Saved file: `q5/outputs/hsv.jpg`
 
-![HSV Image](q5/outputs/hsv.jpg)
+![HSV Image](../q5/outputs/hsv.jpg)
 
 ## 7. Apply Gaussian blur
 ```python
@@ -75,7 +75,7 @@ cv2.imwrite(f"{outdir}/blurred.jpg", blur)
 ```
 Saved file: `q5/outputs/blurred.jpg`
 
-![Gaussian Blur](q5/outputs/blurred.jpg)
+![Gaussian Blur](../q5/outputs/blurred.jpg)
 
 ## 8. Highlight edges with Canny edge detector
 ```python
@@ -84,5 +84,5 @@ cv2.imwrite(f"{outdir}/edges.jpg", edges)
 ```
 Saved file: `q5/outputs/edges.jpg`
 
-![Canny Edges](q5/outputs/edges.jpg)
+![Canny Edges](../q5/outputs/edges.jpg)
 
