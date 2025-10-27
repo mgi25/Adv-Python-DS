@@ -1,0 +1,8 @@
+# Ignore trained model artifacts
+*.model
+*.npy
+*.bin
+*.vec
+*.gz
+*.pt
+*.wv*
