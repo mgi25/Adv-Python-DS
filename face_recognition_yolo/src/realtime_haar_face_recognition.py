@@ -25,9 +25,11 @@ CLASS_INDICES_PATH = os.path.join(MODELS_DIR, "class_indices.json")
 # MODEL / DETECTOR SETTINGS
 # -------------------------------------------------
 IMG_SIZE = 160
-UNKNOWN_THRESHOLD = 0.7  # below this prob => Unknown
+UNKNOWN_THRESHOLD = 0.7  # base threshold (still used)
+MIN_CONF = 0.80          # must be at least this confident
+MIN_MARGIN = 0.20        # top – second probability gap
 
-# OpenCV built-in Haar cascade (comes with opencv-python)
+# OpenCV built-in Haar cascade
 HAAR_PATH = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 face_cascade = cv2.CascadeClassifier(HAAR_PATH)
 
@@ -58,13 +60,26 @@ def preprocess_face(face_img):
 def predict_identity(face_img):
     """
     Return (label, confidence) where label is a person name or 'Unknown'.
+    Uses stronger rules to avoid mislabeling everyone as the same person.
     """
     inp = preprocess_face(face_img)
     preds = cnn_model.predict(inp, verbose=0)[0]  # shape (num_classes,)
+
     max_idx = int(np.argmax(preds))
     max_prob = float(preds[max_idx])
 
-    if max_prob < UNKNOWN_THRESHOLD:
+    # 2nd best probability
+    sorted_probs = np.sort(preds)
+    second_prob = float(sorted_probs[-2]) if len(sorted_probs) > 1 else 0.0
+
+    # Debug (can comment out later)
+    # print("probs:", preds, "max:", max_prob, "second:", second_prob)
+
+    # Conditions to accept as "known"
+    confident_enough = max_prob >= MIN_CONF
+    margin_ok = (max_prob - second_prob) >= MIN_MARGIN
+
+    if (not confident_enough) or (not margin_ok) or (max_prob < UNKNOWN_THRESHOLD):
         return "Unknown", max_prob
     else:
         return idx2class[max_idx], max_prob
@@ -98,7 +113,6 @@ def main():
         if not ret:
             break
 
-        # Convert to grayscale for Haar, but we draw on color frame
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # detectMultiScale: returns (x, y, w, h) for each detected face
@@ -110,22 +124,17 @@ def main():
         )
 
         for (x, y, w, h) in faces:
-            x1 = x
-            y1 = y
-            x2 = x + w
-            y2 = y + h
+            x1, y1 = x, y
+            x2, y2 = x + w, y + h
 
-            # Crop from original color frame
             face_color = frame[y1:y2, x1:x2]
             if face_color.size == 0:
                 continue
 
             label, conf = predict_identity(face_color)
 
-            # Choose color: green for known, red for unknown
             color = (0, 255, 0) if label != "Unknown" else (0, 0, 255)
 
-            # Draw rectangle and label
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             text = f"{label} ({conf:.2f})"
             cv2.putText(
@@ -138,7 +147,6 @@ def main():
                 2,
             )
 
-            # Log unknown faces
             if label == "Unknown":
                 log_unknown_face(face_color, conf)
 
