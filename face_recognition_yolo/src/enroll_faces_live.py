@@ -19,10 +19,8 @@ face_cascade = cv2.CascadeClassifier(HAAR_PATH)
 def capture_faces_auto(target_samples=80, person_name="person"):
     """
     Automatically capture face images for one person.
-    - Camera runs continuously
-    - Whenever a face is detected, it captures every Nth frame
-    - User slowly moves head like phone FaceID
-    - Press 'q' to stop early
+    Camera runs; when a face is detected, it captures every Nth frame.
+    Press 'q' to stop early.
     """
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -31,11 +29,11 @@ def capture_faces_auto(target_samples=80, person_name="person"):
 
     captured_faces = []
     frame_counter = 0
-    CAPTURE_EVERY_N_FRAMES = 3  # capture every Nth frame with a face
+    CAPTURE_EVERY_N_FRAMES = 3  # capture every 3rd frame with a face
 
     print(f"\n[INFO] Starting automatic capture for: {person_name}")
     print("[INFO] Instructions:")
-    print("  - Look at the camera and move head slowly: left/right/up/down.")
+    print("  - Look at the camera and move your head slowly (left/right/up/down).")
     print("  - System auto-captures when a face is detected.")
     print("  - Target samples:", target_samples)
     print("  - Press 'q' to finish early.\n")
@@ -71,9 +69,8 @@ def capture_faces_auto(target_samples=80, person_name="person"):
             print("[INFO] Stopping capture by user request.")
             break
 
-        # Auto capture
+        # Auto capture every Nth frame with a detected face
         if len(faces) > 0 and (frame_counter % CAPTURE_EVERY_N_FRAMES == 0):
-            # take largest face
             faces_sorted = sorted(faces, key=lambda b: b[2] * b[3], reverse=True)
             (x, y, w, h) = faces_sorted[0]
             face_img = frame[y:y + h, x:x + w]
@@ -99,13 +96,12 @@ def save_faces(person_name, captured_faces):
     Save captured faces into:
         dataset_faces/train/<person_name>/
         dataset_faces/val/<person_name>/
-    Simple split: first 80% train, last 20% val.
+    First 80% → train, last 20% → val.
     """
     if len(captured_faces) == 0:
         print("[WARN] No faces to save for this person.")
         return
 
-    # Create folders
     train_person_dir = os.path.join(TRAIN_DIR, person_name)
     val_person_dir = os.path.join(VAL_DIR, person_name)
     os.makedirs(train_person_dir, exist_ok=True)
@@ -120,13 +116,15 @@ def save_faces(person_name, captured_faces):
 
     for i, img in enumerate(captured_faces):
         if i < n_train:
-            filename = os.path.join(train_person_dir,
-                                    f"{person_name}_train_{count_train:03d}.jpg")
+            filename = os.path.join(
+                train_person_dir, f"{person_name}_train_{count_train:03d}.jpg"
+            )
             cv2.imwrite(filename, img)
             count_train += 1
         else:
-            filename = os.path.join(val_person_dir,
-                                    f"{person_name}_val_{count_val:03d}.jpg")
+            filename = os.path.join(
+                val_person_dir, f"{person_name}_val_{count_val:03d}.jpg"
+            )
             cv2.imwrite(filename, img)
             count_val += 1
 
@@ -139,10 +137,10 @@ def main():
     print("   LIVE AUTO FACE ENROLLMENT (NAME FIRST)  ")
     print("===========================================\n")
     print("Flow:")
-    print("  1) Ask for name of person.")
-    print("  2) Automatically capture many face images with webcam.")
+    print("  1) Ask for person's name.")
+    print("  2) Automatically capture many face images.")
     print("  3) Save to dataset_faces/train and dataset_faces/val.")
-    print("Then you will use these images for training (train_cnn.py).\n")
+    print("Then you run train_cnn.py to train the model.\n")
 
     default_target_samples = 80
 
@@ -152,15 +150,15 @@ def main():
             print("[INFO] Enrollment finished.")
             break
 
-        # 1) Ask name first
         person_name = input("Enter person's name (no spaces, e.g. 'alen'): ").strip()
         if not person_name:
             print("[WARN] Empty name, skipping.")
             continue
 
-        # 2) Ask how many samples (optional)
         try:
-            user_input = input(f"Target samples for {person_name} (default {default_target_samples}): ").strip()
+            user_input = input(
+                f"Target samples for {person_name} (default {default_target_samples}): "
+            ).strip()
             if user_input == "":
                 target_samples = default_target_samples
             else:
@@ -169,10 +167,7 @@ def main():
             print("[WARN] Invalid number, using default:", default_target_samples)
             target_samples = default_target_samples
 
-        # 3) Auto capture
         faces = capture_faces_auto(target_samples=target_samples, person_name=person_name)
-
-        # 4) Save for training
         save_faces(person_name, faces)
 
     print("\n[INFO] Now run:  python src/train_cnn.py  to train/update the model.")
