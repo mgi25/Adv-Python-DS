@@ -12,6 +12,7 @@ import tensorflow as tf
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # face_recognition_yolo/
 
 MODELS_DIR = os.path.join(BASE_DIR, "models")
+DATASET_TRAIN_DIR = os.path.join(BASE_DIR, "dataset_faces", "train")
 LOG_DIR = os.path.join(BASE_DIR, "logs", "unknown_faces")
 SCREENSHOT_DIR = os.path.join(BASE_DIR, "screenshots")
 
@@ -22,91 +23,188 @@ MODEL_PATH = os.path.join(MODELS_DIR, "face_cnn_mobilenetv2.h5")
 CLASS_INDICES_PATH = os.path.join(MODELS_DIR, "class_indices.json")
 
 # -------------------------------------------------
-# MODEL / DETECTOR SETTINGS
+# SETTINGS
 # -------------------------------------------------
 IMG_SIZE = 160
-UNKNOWN_THRESHOLD = 0.7  # base threshold (still used)
-MIN_CONF = 0.80          # must be at least this confident
-MIN_MARGIN = 0.20        # top – second probability gap
 
-# OpenCV built-in Haar cascade
+# cosine similarity in [0,1]; closer to 1 → more similar
+SIM_THRESHOLD = 0.65  # if best similarity < this => Unknown
+
+# OpenCV Haar cascade for face detection
 HAAR_PATH = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 face_cascade = cv2.CascadeClassifier(HAAR_PATH)
 
 # -------------------------------------------------
-# LOAD CNN MODEL + CLASS MAPPING
+# LOAD CNN MODEL + CREATE EMBEDDING MODEL
 # -------------------------------------------------
 print("[INFO] Loading CNN face recognition model...")
-cnn_model = tf.keras.models.load_model(MODEL_PATH)
+base_model = tf.keras.models.load_model(MODEL_PATH)
 
+# Find the 128-unit Dense layer to use as embedding output
+embedding_layer = None
+for layer in reversed(base_model.layers):
+    # In Keras 3, Dense has 'units' instead of reliable 'output_shape' here
+    if isinstance(layer, tf.keras.layers.Dense) and getattr(layer, "units", None) == 128:
+        embedding_layer = layer
+        break
+
+if embedding_layer is None:
+    raise RuntimeError("Could not find a 128-unit Dense layer for embeddings. "
+                       "Make sure train_cnn.py uses Dense(128) before the final output layer.")
+
+embedding_model = tf.keras.Model(
+    inputs=base_model.input,
+    outputs=embedding_layer.output
+)
+
+# (Optional) load mapping just for reference / debugging
 with open(CLASS_INDICES_PATH, "r") as f:
     class_indices = json.load(f)
-
 idx2class = {v: k for k, v in class_indices.items()}
-print("[INFO] Known classes:", idx2class)
-
+print("[INFO] Known classes (from training):", idx2class)
 
 # -------------------------------------------------
 # HELPER FUNCTIONS
 # -------------------------------------------------
 def preprocess_face(face_img):
-    """Resize and normalize cropped face for CNN."""
+    """Resize and normalize cropped face for embedding model."""
     face_resized = cv2.resize(face_img, (IMG_SIZE, IMG_SIZE))
     face_resized = face_resized.astype("float32") / 255.0
     face_resized = np.expand_dims(face_resized, axis=0)  # (1, H, W, 3)
     return face_resized
 
 
-def predict_identity(face_img):
-    """
-    Return (label, confidence) where label is a person name or 'Unknown'.
-    Uses stronger rules to avoid mislabeling everyone as the same person.
-    """
+def get_embedding(face_img):
+    """Get 128-d normalized embedding vector for a face."""
     inp = preprocess_face(face_img)
-    preds = cnn_model.predict(inp, verbose=0)[0]  # shape (num_classes,)
-
-    max_idx = int(np.argmax(preds))
-    max_prob = float(preds[max_idx])
-
-    # 2nd best probability
-    sorted_probs = np.sort(preds)
-    second_prob = float(sorted_probs[-2]) if len(sorted_probs) > 1 else 0.0
-
-    # Debug (can comment out later)
-    # print("probs:", preds, "max:", max_prob, "second:", second_prob)
-
-    # Conditions to accept as "known"
-    confident_enough = max_prob >= MIN_CONF
-    margin_ok = (max_prob - second_prob) >= MIN_MARGIN
-
-    if (not confident_enough) or (not margin_ok) or (max_prob < UNKNOWN_THRESHOLD):
-        return "Unknown", max_prob
-    else:
-        return idx2class[max_idx], max_prob
+    emb = embedding_model.predict(inp, verbose=0)[0]  # (128,)
+    norm = np.linalg.norm(emb) + 1e-10
+    return emb / norm
 
 
-def log_unknown_face(face_img, prob):
-    """Save unknown face and append to log file."""
+def cosine_similarity(a, b):
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
+
+
+def log_unknown_face(face_img, best_sim):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     img_path = os.path.join(LOG_DIR, f"unknown_{ts}.jpg")
     cv2.imwrite(img_path, face_img)
 
     log_file = os.path.join(LOG_DIR, "unknown_log.txt")
     with open(log_file, "a") as f:
-        f.write(f"{ts}, prob={prob:.4f}, file={img_path}\n")
+        f.write(f"{ts}, best_sim={best_sim:.4f}, file={img_path}\n")
+
+
+# -------------------------------------------------
+# BUILD FACE DATABASE FROM TRAIN IMAGES
+# -------------------------------------------------
+def build_face_database():
+    """
+    For each person folder in dataset_faces/train,
+    compute average embedding vector from all images.
+    Returns: dict{name: embedding_vector}
+    """
+    print("[INFO] Building face database from training images...")
+    face_db = {}
+    exts = (".jpg", ".jpeg", ".png", ".bmp")
+
+    for person_name in sorted(os.listdir(DATASET_TRAIN_DIR)):
+        person_dir = os.path.join(DATASET_TRAIN_DIR, person_name)
+        if not os.path.isdir(person_dir):
+            continue
+
+        embeddings = []
+        for fname in os.listdir(person_dir):
+            if not fname.lower().endswith(exts):
+                continue
+
+            img_path = os.path.join(person_dir, fname)
+            img = cv2.imread(img_path)
+            if img is None:
+                continue
+
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(60, 60),
+            )
+
+            if len(faces) == 0:
+                continue
+
+            # Take the largest detected face (if multiple)
+            faces = sorted(faces, key=lambda b: b[2] * b[3], reverse=True)
+            (x, y, w, h) = faces[0]
+            face_color = img[y:y + h, x:x + w]
+
+            emb = get_embedding(face_color)
+            embeddings.append(emb)
+
+        if len(embeddings) == 0:
+            print(f"[WARN] No faces found for person '{person_name}', skipping.")
+            continue
+
+        mean_emb = np.mean(embeddings, axis=0)
+        # normalize mean embedding too
+        mean_emb = mean_emb / (np.linalg.norm(mean_emb) + 1e-10)
+        face_db[person_name] = mean_emb
+        print(f"[INFO] Added '{person_name}' with {len(embeddings)} samples.")
+
+    if not face_db:
+        print("[ERROR] Face database is empty! Check your dataset.")
+    else:
+        print("[INFO] Face database built with", len(face_db), "persons.")
+
+    return face_db
+
+
+FACE_DB = build_face_database()
+
+
+# -------------------------------------------------
+# RECOGNITION USING EMBEDDINGS
+# -------------------------------------------------
+def recognize_face(face_img):
+    """
+    Compute embedding for face_img and compare with all persons in FACE_DB.
+    Returns (label, best_sim).
+    """
+    if not FACE_DB:
+        return "Unknown", 0.0
+
+    emb = get_embedding(face_img)
+
+    best_name = None
+    best_sim = -1.0
+
+    for name, ref_emb in FACE_DB.items():
+        sim = cosine_similarity(emb, ref_emb)
+        if sim > best_sim:
+            best_sim = sim
+            best_name = name
+
+    # Decide if it is known or unknown
+    if best_sim < SIM_THRESHOLD:
+        return "Unknown", best_sim
+    else:
+        return best_name, best_sim
 
 
 # -------------------------------------------------
 # MAIN LOOP
 # -------------------------------------------------
 def main():
-    cap = cv2.VideoCapture(0)  # default webcam
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("[ERROR] Cannot open webcam.")
         return
 
     print("[INFO] Press 'q' to quit, 's' to save screenshot.")
+    print(f"[INFO] Similarity threshold for known faces: {SIM_THRESHOLD}")
 
     while True:
         ret, frame = cap.read()
@@ -115,7 +213,6 @@ def main():
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # detectMultiScale: returns (x, y, w, h) for each detected face
         faces = face_cascade.detectMultiScale(
             gray,
             scaleFactor=1.1,
@@ -131,12 +228,12 @@ def main():
             if face_color.size == 0:
                 continue
 
-            label, conf = predict_identity(face_color)
+            label, sim = recognize_face(face_color)
 
             color = (0, 255, 0) if label != "Unknown" else (0, 0, 255)
 
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            text = f"{label} ({conf:.2f})"
+            text = f"{label} ({sim:.2f})"
             cv2.putText(
                 frame,
                 text,
@@ -148,9 +245,9 @@ def main():
             )
 
             if label == "Unknown":
-                log_unknown_face(face_color, conf)
+                log_unknown_face(face_color, sim)
 
-        cv2.imshow("Real-Time Face Recognition (Haar + CNN)", frame)
+        cv2.imshow("Real-Time Face Recognition (Embedding + NN)", frame)
         key = cv2.waitKey(1) & 0xFF
 
         if key == ord("q"):
