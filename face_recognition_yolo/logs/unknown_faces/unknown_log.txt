@@ -2043,3 +2043,7 @@
 20251126_092657_593078, prob=0.6906, file=C:\Users\mgial\OneDrive\Documents\Adv Python sem 5\calss 1\face_recognition_yolo\logs\unknown_faces\unknown_20251126_092657_593078.jpg
 20251126_092702_555313, prob=0.7824, file=C:\Users\mgial\OneDrive\Documents\Adv Python sem 5\calss 1\face_recognition_yolo\logs\unknown_faces\unknown_20251126_092702_555313.jpg
 20251126_092702_633217, prob=0.7824, file=C:\Users\mgial\OneDrive\Documents\Adv Python sem 5\calss 1\face_recognition_yolo\logs\unknown_faces\unknown_20251126_092702_633217.jpg
+20251126_094307_105236, best_sim=0.6469, file=C:\Users\mgial\OneDrive\Documents\Adv Python sem 5\calss 1\face_recognition_yolo\logs\unknown_faces\unknown_20251126_094307_105236.jpg
+20251126_094307_186821, best_sim=0.6469, file=C:\Users\mgial\OneDrive\Documents\Adv Python sem 5\calss 1\face_recognition_yolo\logs\unknown_faces\unknown_20251126_094307_186821.jpg
+20251126_094307_653267, best_sim=0.6421, file=C:\Users\mgial\OneDrive\Documents\Adv Python sem 5\calss 1\face_recognition_yolo\logs\unknown_faces\unknown_20251126_094307_653267.jpg
+20251126_094307_732452, best_sim=0.6421, file=C:\Users\mgial\OneDrive\Documents\Adv Python sem 5\calss 1\face_recognition_yolo\logs\unknown_faces\unknown_20251126_094307_732452.jpg
