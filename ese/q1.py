@@ -1,3 +1,5 @@
+# create a PyGame window with a rectangle controlled by arrow keys
+
 import sys
 import pygame
 

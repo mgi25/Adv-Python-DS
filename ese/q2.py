@@ -1,3 +1,5 @@
+# change background color on boundary collision
+
 import sys
 import pygame
 
